@@ -727,6 +727,12 @@ public extension ChatView {
         view.recorderSettings = settings
         return view
     }
+
+    func setLocalization(_ localization: ChatLocalization) -> ChatView {
+        var view = self
+        view.localization = localization
+        return view
+    }
     
     /// Sets the general duration of various message menu animations
     ///
