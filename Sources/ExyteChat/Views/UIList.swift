@@ -67,6 +67,10 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
         tableView.isScrollEnabled = isScrollEnabled
         tableView.keyboardDismissMode = keyboardDismissMode
 
+        if alignMessagesToTop && type == .conversation {
+            context.coordinator.startObservingContentSize(tableView)
+        }
+
         NotificationCenter.default.addObserver(forName: .onScrollToBottom, object: nil, queue: nil) { _ in
             DispatchQueue.main.async {
                 if !context.coordinator.sections.isEmpty {
@@ -453,6 +457,7 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
         let keyboardDismissMode: UIScrollView.KeyboardDismissMode
 
         private let impactGenerator = UIImpactFeedbackGenerator(style: .heavy)
+        private var contentSizeObservation: NSKeyValueObservation?
 
         init(
             viewModel: ChatViewModel, inputViewModel: InputViewModel,
@@ -491,6 +496,31 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
             self.paginationTargetIndexPath = paginationTargetIndexPath
             self.listSwipeActions = listSwipeActions
             self.keyboardDismissMode = keyboardDismissMode
+        }
+
+        private var isApplyingInset = false
+
+        func startObservingContentSize(_ tableView: UITableView) {
+            contentSizeObservation = tableView.observe(\.contentSize, options: [.new, .old]) { [weak self] tv, change in
+                guard let self, !self.isApplyingInset else { return }
+                guard let oldSize = change.oldValue, let newSize = change.newValue,
+                      oldSize.height != newSize.height else { return }
+                guard !self.sections.isEmpty else { return }
+                let contentHeight = newSize.height
+                let frameHeight = tv.frame.height
+                guard frameHeight > 0 else { return }
+                self.isApplyingInset = true
+                if contentHeight < frameHeight {
+                    let inset = frameHeight - contentHeight
+                    tv.contentInset = UIEdgeInsets(top: inset, left: 0, bottom: 0, right: 0)
+                    tv.contentOffset = CGPoint(x: 0, y: -inset)
+                } else {
+                    if tv.contentInset != .zero {
+                        tv.contentInset = .zero
+                    }
+                }
+                self.isApplyingInset = false
+            }
         }
 
         /// call pagination handler when this row is reached
