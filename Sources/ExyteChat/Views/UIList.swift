@@ -102,6 +102,7 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
                     let inset = frameHeight - contentHeight
                     tableView.contentInset = UIEdgeInsets(top: inset, left: 0, bottom: 0, right: 0)
                     tableView.contentOffset = CGPoint(x: 0, y: -inset)
+                    tableView.layoutIfNeeded()
                 } else {
                     tableView.contentInset = .zero
                 }
@@ -224,6 +225,20 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
 
             if !isScrollEnabled {
                 tableContentHeight = tableView.contentSize.height
+            }
+
+            if alignMessagesToTop && type == .conversation {
+                let contentHeight = tableView.contentSize.height
+                let frameHeight = tableView.frame.height
+                if frameHeight > 0 {
+                    if contentHeight < frameHeight {
+                        let inset = frameHeight - contentHeight
+                        tableView.contentInset = UIEdgeInsets(top: inset, left: 0, bottom: 0, right: 0)
+                        tableView.contentOffset = CGPoint(x: 0, y: -inset)
+                    } else {
+                        tableView.contentInset = .zero
+                    }
+                }
             }
         }
     }
