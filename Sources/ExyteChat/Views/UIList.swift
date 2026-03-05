@@ -92,30 +92,35 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
             }
         }
 
-        if alignMessagesToTop && type == .conversation {
-            DispatchQueue.main.async {
-                tableView.layoutIfNeeded()
-                let contentHeight = tableView.contentSize.height
-                let frameHeight = tableView.frame.height
-                guard frameHeight > 0 else { return }
-                if contentHeight < frameHeight {
-                    let inset = frameHeight - contentHeight
-                    tableView.contentInset = UIEdgeInsets(top: inset, left: 0, bottom: 0, right: 0)
-                    tableView.contentOffset = CGPoint(x: 0, y: -inset)
-                    tableView.layoutIfNeeded()
-                } else {
-                    tableView.contentInset = .zero
+        if context.coordinator.sections == sections {
+            if alignMessagesToTop && type == .conversation {
+                DispatchQueue.main.async {
+                    Self.applyTopAlignmentInset(to: tableView)
                 }
             }
-        }
-
-        if context.coordinator.sections == sections {
             return
         }
 
         Task {
             await updateQueue.enqueue() {
                 await updateIfNeeded(coordinator: context.coordinator, tableView: tableView)
+            }
+        }
+    }
+
+    @MainActor
+    static func applyTopAlignmentInset(to tableView: UITableView) {
+        tableView.layoutIfNeeded()
+        let contentHeight = tableView.contentSize.height
+        let frameHeight = tableView.frame.height
+        guard frameHeight > 0 else { return }
+        if contentHeight < frameHeight {
+            let inset = frameHeight - contentHeight
+            tableView.contentInset = UIEdgeInsets(top: inset, left: 0, bottom: 0, right: 0)
+            tableView.contentOffset = CGPoint(x: 0, y: -inset)
+        } else {
+            if tableView.contentInset != .zero {
+                tableView.contentInset = .zero
             }
         }
     }
@@ -128,11 +133,17 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
 
         if coordinator.sections.isEmpty {
             coordinator.sections = sections
-            tableView.reloadData()
+            UIView.performWithoutAnimation {
+                tableView.reloadData()
+                tableView.layoutIfNeeded()
+            }
             if !isScrollEnabled {
                 DispatchQueue.main.async {
                     tableContentHeight = tableView.contentSize.height
                 }
+            }
+            if alignMessagesToTop && type == .conversation {
+                Self.applyTopAlignmentInset(to: tableView)
             }
             return
         }
@@ -214,11 +225,18 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
             // step 4: inserts
             // apply the rest of the changes to table's dataSource, i.e. inserts
             //print("4 apply inserts", runID)
+            let shouldSuppressAnimation = alignMessagesToTop && type == .conversation
+            if shouldSuppressAnimation {
+                UIView.setAnimationsEnabled(false)
+            }
             await performBatchTableUpdates(tableView) {
                 updateContextClosure(sections)
                 for operation in splitInfo.insertOperations {
                     applyOperation(operation, tableView: tableView)
                 }
+            }
+            if shouldSuppressAnimation {
+                UIView.setAnimationsEnabled(true)
             }
             //print("4 finished inserts", runID)
 
@@ -226,18 +244,8 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
                 tableContentHeight = tableView.contentSize.height
             }
 
-            if alignMessagesToTop && type == .conversation {
-                let contentHeight = tableView.contentSize.height
-                let frameHeight = tableView.frame.height
-                if frameHeight > 0 {
-                    if contentHeight < frameHeight {
-                        let inset = frameHeight - contentHeight
-                        tableView.contentInset = UIEdgeInsets(top: inset, left: 0, bottom: 0, right: 0)
-                        tableView.contentOffset = CGPoint(x: 0, y: -inset)
-                    } else {
-                        tableView.contentInset = .zero
-                    }
-                }
+            if shouldSuppressAnimation {
+                Self.applyTopAlignmentInset(to: tableView)
             }
         }
     }
