@@ -68,6 +68,8 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
         tableView.keyboardDismissMode = keyboardDismissMode
 
         if alignMessagesToTop && type == .conversation {
+            tableView.sectionHeaderTopPadding = 0
+            tableView.tableFooterView = UIView(frame: CGRect(x: 0, y: 0, width: 0, height: CGFloat.leastNonzeroMagnitude))
             context.coordinator.startObservingContentSize(tableView)
         }
 
