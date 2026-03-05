@@ -114,18 +114,21 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
 
     @MainActor
     static func applyTopAlignmentInset(to tableView: UITableView) {
-        tableView.layoutIfNeeded()
-        let contentHeight = tableView.contentSize.height
-        let frameHeight = tableView.frame.height
-        guard frameHeight > 0 else { return }
-        if contentHeight < frameHeight {
-            let inset = frameHeight - contentHeight
-            tableView.contentInset = UIEdgeInsets(top: inset, left: 0, bottom: 0, right: 0)
-            tableView.contentOffset = CGPoint(x: 0, y: -inset)
-        } else {
-            if tableView.contentInset != .zero {
-                tableView.contentInset = .zero
+        UIView.performWithoutAnimation {
+            tableView.layoutIfNeeded()
+            let contentHeight = tableView.contentSize.height
+            let frameHeight = tableView.frame.height
+            guard frameHeight > 0 else { return }
+            if contentHeight < frameHeight {
+                let inset = frameHeight - contentHeight
+                tableView.contentInset = UIEdgeInsets(top: inset, left: 0, bottom: 0, right: 0)
+                tableView.contentOffset = CGPoint(x: 0, y: -inset)
+            } else {
+                if tableView.contentInset != .zero {
+                    tableView.contentInset = .zero
+                }
             }
+            tableView.layoutIfNeeded()
         }
     }
 
@@ -187,6 +190,12 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
         //print("operations edit:\n", splitInfo.editOperations.map { $0.description })
         //print("operations insert:\n", splitInfo.insertOperations.map { $0.description })
 
+        let suppressAllAnimations = alignMessagesToTop && type == .conversation
+
+        if suppressAllAnimations {
+            UIView.setAnimationsEnabled(false)
+        }
+
         await performBatchTableUpdates(tableView) {
             // step 1: deletes
             // delete sections and rows if necessary
@@ -211,7 +220,9 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
         }
         //print("2 finished swaps", runID)
 
-        UIView.setAnimationsEnabled(false)
+        if !suppressAllAnimations {
+            UIView.setAnimationsEnabled(false)
+        }
         await performBatchTableUpdates(tableView) {
             // step 3: edits
             // check only sections that are already in the table for existing rows that changed and apply only them to table's dataSource without animation
@@ -229,8 +240,7 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
             // step 4: inserts
             // apply the rest of the changes to table's dataSource, i.e. inserts
             //print("4 apply inserts", runID)
-            let shouldSuppressAnimation = alignMessagesToTop && type == .conversation
-            if shouldSuppressAnimation {
+            if suppressAllAnimations {
                 UIView.setAnimationsEnabled(false)
             }
             await performBatchTableUpdates(tableView) {
@@ -239,7 +249,7 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
                     applyOperation(operation, tableView: tableView)
                 }
             }
-            if shouldSuppressAnimation {
+            if suppressAllAnimations {
                 UIView.setAnimationsEnabled(true)
             }
             //print("4 finished inserts", runID)
@@ -248,7 +258,7 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
                 tableContentHeight = tableView.contentSize.height
             }
 
-            if shouldSuppressAnimation {
+            if suppressAllAnimations {
                 Self.applyTopAlignmentInset(to: tableView)
             }
         }
@@ -499,6 +509,7 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
         }
 
         private var isApplyingInset = false
+        private var pendingInsetWorkItem: DispatchWorkItem?
 
         func startObservingContentSize(_ tableView: UITableView) {
             contentSizeObservation = tableView.observe(\.contentSize, options: [.new, .old]) { [weak self] tv, change in
@@ -506,20 +517,32 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
                 guard let oldSize = change.oldValue, let newSize = change.newValue,
                       oldSize.height != newSize.height else { return }
                 guard !self.sections.isEmpty else { return }
-                let contentHeight = newSize.height
-                let frameHeight = tv.frame.height
-                guard frameHeight > 0 else { return }
-                self.isApplyingInset = true
-                if contentHeight < frameHeight {
-                    let inset = frameHeight - contentHeight
-                    tv.contentInset = UIEdgeInsets(top: inset, left: 0, bottom: 0, right: 0)
-                    tv.contentOffset = CGPoint(x: 0, y: -inset)
-                } else {
-                    if tv.contentInset != .zero {
-                        tv.contentInset = .zero
+                self.pendingInsetWorkItem?.cancel()
+                let workItem = DispatchWorkItem { [weak self] in
+                    guard let self else { return }
+                    self.isApplyingInset = true
+                    UIView.performWithoutAnimation {
+                        let contentHeight = tv.contentSize.height
+                        let frameHeight = tv.frame.height
+                        guard frameHeight > 0 else {
+                            self.isApplyingInset = false
+                            return
+                        }
+                        if contentHeight < frameHeight {
+                            let inset = frameHeight - contentHeight
+                            tv.contentInset = UIEdgeInsets(top: inset, left: 0, bottom: 0, right: 0)
+                            tv.contentOffset = CGPoint(x: 0, y: -inset)
+                        } else {
+                            if tv.contentInset != .zero {
+                                tv.contentInset = .zero
+                            }
+                        }
+                        tv.layoutIfNeeded()
                     }
+                    self.isApplyingInset = false
                 }
-                self.isApplyingInset = false
+                self.pendingInsetWorkItem = workItem
+                DispatchQueue.main.async(execute: workItem)
             }
         }
 
