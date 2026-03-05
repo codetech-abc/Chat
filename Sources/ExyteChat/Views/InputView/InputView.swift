@@ -374,14 +374,14 @@ struct InputView: View {
         } label: {
             theme.images.inputView.arrowSend
                 .viewSize(48)
-                .circleBackground(theme.colors.sendButtonBackground)
+                .circleBackground(theme.colors.sendButtonBackground, backgroundView: theme.colors.sendButtonBackgroundView)
         }
     }
-    
+
     var recordButton: some View {
         theme.images.inputView.microphone
             .viewSize(48)
-            .circleBackground(theme.colors.sendButtonBackground)
+            .circleBackground(theme.colors.sendButtonBackground, backgroundView: theme.colors.sendButtonBackgroundView)
             .frameGetter($recordButtonFrame)
     }
     

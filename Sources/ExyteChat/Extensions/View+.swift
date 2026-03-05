@@ -24,6 +24,16 @@ extension View {
         }
     }
 
+    func circleBackground(_ color: Color, backgroundView: AnyView?) -> some View {
+        self.background {
+            if let backgroundView {
+                backgroundView.clipShape(Circle())
+            } else {
+                Circle().fill(color)
+            }
+        }
+    }
+
     @ViewBuilder
     func applyIf<T: View>(_ condition: Bool, apply: (Self) -> T) -> some View {
         if condition {

@@ -45,6 +45,7 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
     let ids: [String]
     let listSwipeActions: ListSwipeActions
     let keyboardDismissMode: UIScrollView.KeyboardDismissMode
+    let alignMessagesToTop: Bool
 
     @State var isScrolledToTop = false
     @State var updateQueue = UpdateQueue()
@@ -88,6 +89,18 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
         if !isScrollEnabled {
             DispatchQueue.main.async {
                 tableContentHeight = tableView.contentSize.height
+            }
+        }
+
+        if alignMessagesToTop && type == .conversation {
+            DispatchQueue.main.async {
+                let contentHeight = tableView.contentSize.height
+                let frameHeight = tableView.frame.height
+                if contentHeight < frameHeight {
+                    tableView.contentInset.bottom = frameHeight - contentHeight
+                } else {
+                    tableView.contentInset.bottom = 0
+                }
             }
         }
 

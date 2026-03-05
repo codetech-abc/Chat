@@ -132,6 +132,7 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
     var recorderSettings: RecorderSettings = RecorderSettings()
     var listSwipeActions: ListSwipeActions = ListSwipeActions()
     var keyboardDismissMode: UIScrollView.KeyboardDismissMode = .none
+    var alignMessagesToTop: Bool = false
     
     @StateObject private var viewModel = ChatViewModel()
     @StateObject private var inputViewModel = InputViewModel()
@@ -352,7 +353,8 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
             sections: sections,
             ids: ids,
             listSwipeActions: listSwipeActions,
-            keyboardDismissMode: keyboardDismissMode
+            keyboardDismissMode: keyboardDismissMode,
+            alignMessagesToTop: alignMessagesToTop
         )
         .applyIf(!isScrollEnabled) {
             $0.frame(height: tableContentHeight)
@@ -616,6 +618,12 @@ public extension ChatView {
         return view
     }
     
+    func alignMessagesToTop(_ align: Bool) -> ChatView {
+        var view = self
+        view.alignMessagesToTop = align
+        return view
+    }
+
     func showNetworkConnectionProblem(_ show: Bool) -> ChatView {
         var view = self
         view.showNetworkConnectionProblem = show
