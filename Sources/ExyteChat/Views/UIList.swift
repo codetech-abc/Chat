@@ -101,17 +101,7 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
                 if contentHeight < frameHeight {
                     let inset = frameHeight - contentHeight
                     tableView.contentInset = UIEdgeInsets(top: inset, left: 0, bottom: 0, right: 0)
-                    let numSections = tableView.numberOfSections
-                    if numSections > 0 {
-                        let lastSection = numSections - 1
-                        let lastRow = tableView.numberOfRows(inSection: lastSection) - 1
-                        guard lastRow >= 0 else { return }
-                        tableView.scrollToRow(
-                            at: IndexPath(row: lastRow, section: lastSection),
-                            at: .bottom,
-                            animated: false
-                        )
-                    }
+                    tableView.contentOffset = CGPoint(x: 0, y: -inset)
                 } else {
                     tableView.contentInset = .zero
                 }
