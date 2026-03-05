@@ -214,13 +214,12 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
             // step 4: inserts
             // apply the rest of the changes to table's dataSource, i.e. inserts
             //print("4 apply inserts", runID)
-            updateContextClosure(sections)
-
-            tableView.beginUpdates()
-            for operation in splitInfo.insertOperations {
-                applyOperation(operation, tableView: tableView)
+            await performBatchTableUpdates(tableView) {
+                updateContextClosure(sections)
+                for operation in splitInfo.insertOperations {
+                    applyOperation(operation, tableView: tableView)
+                }
             }
-            tableView.endUpdates()
             //print("4 finished inserts", runID)
 
             if !isScrollEnabled {
