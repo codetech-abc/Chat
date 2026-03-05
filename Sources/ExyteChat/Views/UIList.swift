@@ -97,9 +97,11 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
                 let contentHeight = tableView.contentSize.height
                 let frameHeight = tableView.frame.height
                 if contentHeight < frameHeight {
-                    tableView.contentInset.bottom = frameHeight - contentHeight
+                    let inset = frameHeight - contentHeight
+                    tableView.contentInset = UIEdgeInsets(top: inset, left: 0, bottom: 0, right: 0)
+                    tableView.contentOffset = CGPoint(x: 0, y: -inset)
                 } else {
-                    tableView.contentInset.bottom = 0
+                    tableView.contentInset = .zero
                 }
             }
         }
