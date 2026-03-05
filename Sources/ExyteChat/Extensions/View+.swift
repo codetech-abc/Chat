@@ -27,11 +27,9 @@ extension View {
     func circleBackground(_ color: Color, backgroundView: AnyView?) -> some View {
         self.background {
             if let backgroundView {
-                GeometryReader { proxy in
-                    backgroundView
-                        .frame(width: proxy.size.width, height: proxy.size.height)
-                        .clipShape(Circle())
-                }
+                Circle()
+                    .overlay(backgroundView)
+                    .clipShape(Circle())
             } else {
                 Circle().fill(color)
             }

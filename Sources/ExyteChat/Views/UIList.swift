@@ -94,12 +94,23 @@ struct UIList<MessageContent: View, InputView: View>: UIViewRepresentable {
 
         if alignMessagesToTop && type == .conversation {
             DispatchQueue.main.async {
+                tableView.layoutIfNeeded()
                 let contentHeight = tableView.contentSize.height
                 let frameHeight = tableView.frame.height
+                guard frameHeight > 0 else { return }
                 if contentHeight < frameHeight {
                     let inset = frameHeight - contentHeight
                     tableView.contentInset = UIEdgeInsets(top: inset, left: 0, bottom: 0, right: 0)
-                    tableView.contentOffset = CGPoint(x: 0, y: -inset)
+                    if !sections.isEmpty {
+                        let lastSection = sections.count - 1
+                        let lastRow = sections[lastSection].rows.count - 1
+                        guard lastRow >= 0 else { return }
+                        tableView.scrollToRow(
+                            at: IndexPath(row: lastRow, section: lastSection),
+                            at: .bottom,
+                            animated: false
+                        )
+                    }
                 } else {
                     tableView.contentInset = .zero
                 }
